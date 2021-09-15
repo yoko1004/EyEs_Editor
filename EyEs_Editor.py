@@ -1,4 +1,7 @@
+from sys import flags
 import pythoncom
+from pyttsx3 import engine
+from wx.core import Colour
 pythoncom.CoInitialize()
 import clr
 import  mouse
@@ -11,19 +14,13 @@ import threading
 import unicodedata
 import webbrowser
 import pythoncom
+import winsound
+import pyttsx3
 
 class EditorFrame(wx.Frame): #wxPythonの設定
     def __init__(self):
         #ハイライトするキーワード
-        highlight_keyword1 = ["import","from","class","def","while","for","if","elif","else"\
-            ,"break","continue","pass","try","except","with","as","is","__name__","in","global","return"\
-                ,"True","False","None","and","or","not"]
 
-        highlight_keyword2 = ["abs","all","any","ascii","bin","bool","breakpoint","bytearray","bytes","callable","chr","classmethod","compile","complex"\
-            ,"delattr","dict","dir","divmod","enumerate","eval","exec","filter","float","format","frozenset","getattr","globals","hasattr"\
-                ,"hash","help","hex","id","input","int","isinstance","issubclass","iter","len","list","locals","map","max"\
-                    ,"memoryview","min","next","object","oct","open","ord","pow","print","property","range","repr","reversed","round"\
-                        ,"set","setattr","slice","sorted","staticmethod","str","sum","super","tuple","type","vars","zip","__import__"]
 
         wx.Frame.__init__(self,None,-1,"EyEs Editor",size=(1000,1000))
         self.panel = wx.Panel(self,wx.ID_ANY)
@@ -33,51 +30,9 @@ class EditorFrame(wx.Frame): #wxPythonの設定
 
         self.text.SetLexer(stc.STC_LEX_PYTHON)
         self.text.SetThemeEnabled(True)
-        self.text.StyleSetSpec(stc.STC_STYLE_DEFAULT,"size:30,face:UD デジタル 教科書体 NP-R")
-        self.text.StyleClearAll()
+        self.font = "UD デジタル 教科書体 NP-R"
+        self.dark = 0
         
-        self.text.SetCaretStyle(1)
-        self.text.SetCaretWidth(10)
-        self.text.SetCaretPeriod(100)
-        self.text.SetCaretSticky(100)
-        self.text.SetEdgeColumn(10)
-
-        self.text.StyleSetForeground(stc.STC_P_IDENTIFIER,wx.Colour("#FFFFFF"))
-        self.text.StyleSetBackground(stc.STC_P_IDENTIFIER,wx.Colour("#0072B2"))
-
-        faces = {
-                  "font" : "face:UD デジタル 教科書体 NP-R",
-                  "size" : 30,
-                  }
-
-        fonts = "face:%(font)s,size:%(size)d" % faces
-        self.text.StyleSetSpec(stc.STC_STYLE_DEFAULT,"size:30,face:UD デジタル 教科書体 NP-R")
-        self.text.StyleSetBackground(stc.STC_STYLE_DEFAULT,wx.Colour("#FFFFFF"))
-        self.text.StyleSetBackground(stc.STC_P_DEFAULT,wx.Colour("#FFFFFF"))
-        self.text.StyleSetForeground(stc.STC_P_DEFAULT,wx.Colour("#000000"))
-        self.text.SetKeyWords(0," ".join(highlight_keyword1))
-        self.text.SetKeyWords(1," ".join(highlight_keyword2))
-        self.text.StyleSetForeground(stc.STC_P_WORD, wx.Colour("#000000"));
-        self.text.StyleSetForeground(stc.STC_P_WORD2, wx.Colour("#0072B2"));
-        self.text.StyleSetBackground(stc.STC_P_WORD, wx.Colour("#FFA500"));
-        self.text.StyleSetBackground(stc.STC_P_WORD2, wx.Colour("#FFA500"));
-
-        self.text.StyleSetSpec(stc.STC_P_COMMENTLINE,"fore:#CC79A7,back:#FFFFFF" + fonts)
-        self.text.StyleSetSpec(stc.STC_PAS_COMMENT, "fore:#CC79A7,back:#FFFFFF" + fonts)
-        self.text.StyleSetSpec(stc.STC_P_STRING, "fore:#000000,back:#0072B2" + fonts)
-        self.text.StyleSetSpec(stc.STC_P_CHARACTER, "fore:#000000,back:#0072B2" + fonts)
-        self.text.StyleSetSpec(stc.STC_P_STRINGEOL,"fore:#000000,back:#0072B2" + fonts)
-        self.text.StyleSetSpec(stc.STC_P_COMMENTBLOCK,"fore:#CC79A7,back:#FFFFFF" + fonts)
-        self.text.StyleSetSpec(stc.STC_P_TRIPLEDOUBLE,"fore:#CC79A7,back:#FFFFFF" + fonts)
-        self.text.StyleSetSpec(stc.STC_P_DEFNAME,"fore:#E69F00,back:#0072B2" + fonts)
-        self.text.StyleSetSpec(stc.STC_P_CLASSNAME,"fore:#E69F00,back:#0072B2" + fonts)
-        self.text.StyleSetSpec(stc.STC_P_NUMBER, "fore:#56B4E9,back:#0072B2" + fonts)
-        self.text.StyleSetSpec(stc.STC_P_OPERATOR, "fore:#FFA500,back:#0072B2" + fonts)
-        self.text.SetMarginType(3, stc.STC_MARGIN_NUMBER)
-        self.text.SetMarginWidth(3, 60)
-        self.text.StyleSetSpec(stc.STC_STYLE_LINENUMBER,  "fore:#000000")
-        self.text.SetIndent(4)
-        self.text.SetMarginBackground(0,wx.Colour("#FFFFFF"))
 
         self.eyes_text = wx.TextCtrl(self.panel,-1,"",style=wx.TE_MULTILINE)
         font_eyes_text = wx.Font(30, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL,faceName="UD デジタル 教科書体 NP-R")
@@ -159,7 +114,10 @@ class EditorFrame(wx.Frame): #wxPythonの設定
         self.menu_run = wx.Menu()
         self.menu_run.Append(11,"実行")
 
+
         self.menu_option = wx.Menu()
+        self.menu_option.Append(15,"フォント設定")
+        self.menu_option.AppendCheckItem(16,"ダークモード")
         self.menu_option.Append(13,"拡大")
         self.menu_option.Append(14,"縮小")
 
@@ -193,12 +151,104 @@ class EditorFrame(wx.Frame): #wxPythonの設定
         self.Bind(wx.EVT_HOTKEY,self.name_save_text,id=self.id)
 
         self.Bind(wx.EVT_CLOSE,self.exit_window)
-
+        self.style()
         self.pre_save_text()
+        
         self.Show()
 
     def cursor_text(self):
         return str(self.text.GetCurLine()[0])
+
+    def style(self):
+        self.highlight_keyword1 = ["import","from","class","def","while","for","if","elif","else"\
+            ,"break","continue","pass","try","except","with","as","is","__name__","in","global","return"\
+                ,"True","False","None","and","or","not"]
+
+        self.highlight_keyword2 = ["abs","all","any","ascii","bin","bool","breakpoint","bytearray","bytes","callable","chr","classmethod","compile","complex"\
+            ,"delattr","dict","dir","divmod","enumerate","eval","exec","filter","float","format","frozenset","getattr","globals","hasattr"\
+                ,"hash","help","hex","id","input","int","isinstance","issubclass","iter","len","list","locals","map","max"\
+                    ,"memoryview","min","next","object","oct","open","ord","pow","print","property","range","repr","reversed","round"\
+                        ,"set","setattr","slice","sorted","staticmethod","str","sum","super","tuple","type","vars","zip","__import__"]
+
+        self.color_pattern = [["#FFFFFF","#000000","#0072B2","#FF2800","#FFA500"],["#000000","#FFFFFF","#0072B2","#FF2800","#FFA500"]]
+        #白,黒,青,朱色,オレンジ
+        #colour_pattern = {"白":"#FFFFFF","黒":"#000000","青":"#0072B2","赤":"#FF2800","黄":"#FFA500","桃":"#CC79A7","橙":"#E69F00"}
+        self.color_patterns = [["fore:#CC79A7,back:#FFFFFF","fore:#FFA500,back:#0072B2","fore:#000000,back:#0072B2","fore:#CC79A7,back:#FFFFFF","fore:#E69F00,back:#0072B2","fore:#FF2800:,back:#0072B2"],\
+        ["fore:#CC79A7,back:#000000","fore:#FFA500,back:#0072B2","fore:#000000,back:#0072B2","fore:#CC79A7,back:#000000","fore:#E69F00,back:#0072B2","fore:#FF2800:,back:#0072B2"]]
+
+
+        self.text.StyleSetSpec(stc.STC_STYLE_DEFAULT,"size:30,face:"+ self.font)
+
+        faces = {
+                  "font" : "face:" + self.font,
+                  "size" : 30,
+                  }
+
+        fonts = "face:%(font)s,size:%(size)d" % faces
+        self.text.StyleClearAll()
+        self.text.SetTabWidth(4)
+        self.text.SetTabIndents(True)
+        self.text.SetBackSpaceUnIndents(True)
+        self.text.SetIndent(4)
+        self.text.SetCaretStyle(1)
+        self.text.SetCaretWidth(10)
+        self.text.SetCaretPeriod(100)
+        self.text.SetCaretSticky(100)
+        self.text.SetEdgeColumn(10)
+        
+        self.text.StyleSetSpec(stc.STC_STYLE_DEFAULT,"size:30,face:"+ self.font)
+        self.text.SetKeyWords(0," ".join(self.highlight_keyword1))
+        self.text.SetKeyWords(1," ".join(self.highlight_keyword2))
+
+        self.text.StyleSetForeground(stc.STC_P_IDENTIFIER,wx.Colour(self.color_pattern[0][0]))
+        self.text.StyleSetBackground(stc.STC_STYLE_DEFAULT,wx.Colour(self.color_pattern[self.dark][0]))
+        self.text.StyleSetBackground(stc.STC_P_DEFAULT,wx.Colour(self.color_pattern[self.dark][0]))
+        self.text.StyleSetForeground(stc.STC_P_WORD, wx.Colour(self.color_pattern[0][0]));
+
+        self.text.StyleSetForeground(stc.STC_P_DEFAULT,wx.Colour(self.color_pattern[self.dark][1]))
+
+        self.text.StyleSetBackground(stc.STC_P_IDENTIFIER,wx.Colour(self.color_pattern[self.dark][2]))
+        self.text.StyleSetForeground(stc.STC_P_WORD2, wx.Colour(self.color_pattern[self.dark][2]));
+
+        self.text.StyleSetBackground(stc.STC_P_WORD, wx.Colour(self.color_pattern[self.dark][3]));
+        self.text.StyleSetBackground(stc.STC_P_WORD2, wx.Colour(self.color_pattern[self.dark][4]));
+
+        self.text.StyleSetSpec(stc.STC_P_COMMENTLINE,self.color_patterns[self.dark][0] + fonts)
+        self.text.StyleSetSpec(stc.STC_PAS_COMMENT, self.color_patterns[self.dark][0] + fonts)
+        self.text.StyleSetSpec(stc.STC_P_STRING, self.color_patterns[self.dark][1] + fonts)
+        self.text.StyleSetSpec(stc.STC_P_NUMBER, self.color_patterns[self.dark][1] + fonts)
+        self.text.StyleSetSpec(stc.STC_P_CHARACTER, self.color_patterns[self.dark][2] + fonts)
+        self.text.StyleSetSpec(stc.STC_P_STRINGEOL,self.color_patterns[self.dark][2] + fonts)
+        self.text.StyleSetSpec(stc.STC_P_COMMENTBLOCK,self.color_patterns[self.dark][3] + fonts)
+        self.text.StyleSetSpec(stc.STC_P_TRIPLEDOUBLE,self.color_patterns[self.dark][3] + fonts)
+        self.text.StyleSetSpec(stc.STC_P_DEFNAME,self.color_patterns[self.dark][4] + fonts)
+        self.text.StyleSetSpec(stc.STC_P_CLASSNAME,self.color_patterns[self.dark][4] + fonts)
+        self.text.StyleSetSpec(stc.STC_P_OPERATOR, self.color_patterns[self.dark][5] + fonts)
+        self.text.SetMarginType(3, stc.STC_MARGIN_NUMBER)
+        self.text.SetMarginWidth(3, 60)
+        self.text.StyleSetSpec(stc.STC_STYLE_LINENUMBER,  self.color_pattern[self.dark][1])
+        self.text.SetIndent(4)
+        self.text.SetMarginBackground(0,wx.Colour(self.color_pattern[self.dark][0]))
+        self.text.SetCaretForeground(wx.Colour(self.color_pattern[self.dark][1]))
+
+        '''
+        self.text.StyleSetSpec(stc.STC_P_COMMENTLINE,"fore:#CC79A7,back:#FFFFFF")
+        self.text.StyleSetSpec(stc.STC_PAS_COMMENT, "fore:#CC79A7,back:#FFFFFF")
+        self.text.StyleSetSpec(stc.STC_P_STRING, "fore:#FFA500,back:#0072B2")
+        self.text.StyleSetSpec(stc.STC_P_NUMBER, "fore:#FFA500,back:#0072B2")
+        self.text.StyleSetSpec(stc.STC_P_CHARACTER, "fore:#000000,back:#0072B2")
+        self.text.StyleSetSpec(stc.STC_P_STRINGEOL,"fore:#000000,back:#0072B2")
+        self.text.StyleSetSpec(stc.STC_P_COMMENTBLOCK,"fore:#CC79A7,back:#FFFFFF")
+        self.text.StyleSetSpec(stc.STC_P_TRIPLEDOUBLE,"fore:#CC79A7,back:#FFFFFF")
+        self.text.StyleSetSpec(stc.STC_P_DEFNAME,"fore:#E69F00,back:#0072B2")
+        self.text.StyleSetSpec(stc.STC_P_CLASSNAME,"fore:#E69F00,back:#0072B2")
+        self.text.StyleSetSpec(stc.STC_P_OPERATOR, "fore:#FF2800:,back:#0072B2")
+        self.text.SetMarginType(3, stc.STC_MARGIN_NUMBER)
+        self.text.SetMarginWidth(3, 60)
+        self.text.StyleSetSpec(stc.STC_STYLE_LINENUMBER,  "fore:#000000")
+        self.text.SetIndent(4)
+        self.text.SetMarginBackground(0,wx.Colour("#FFFFFF"))
+        '''
 
     def click_menu(self,event):
         event_id = event.GetId()
@@ -234,14 +284,26 @@ class EditorFrame(wx.Frame): #wxPythonの設定
         elif event_id == 11:
             self.python_run(0)
 
+
         elif event_id == 13:
             self.text_zoom1(0)       
                 
         elif event_id == 14:
             self.text_zoom2(0)    
 
+        elif event_id == 15:
+            self.font_select()
+
+        elif event_id == 16:
+            if event.IsChecked():
+                self.dark = 1
+            else:
+                self.dark = 0
+            self.style()
+
         elif event_id == 18:
             webbrowser.open("https://github.com/yoko1004/EyEs_Editor/releases")
+
 
     def pre_save_text(self):
         with open("config/pre_save.txt","r",encoding="utf-8") as p:
@@ -326,6 +388,19 @@ class EditorFrame(wx.Frame): #wxPythonの設定
             wx.Exit()
             exit()
 
+    def font_select(self):
+        fd = wx.FontData()
+        font_dlg = wx.FontDialog(self,fd)
+        font_dlg.Enable
+        if font_dlg.ShowModal() == wx.ID_OK:
+            now_font_data = font_dlg.GetFontData()
+            fd = now_font_data.GetChosenFont()
+            self.font = fd.GetFaceName()
+            self.style()
+
+
+
+
 def text_count(texts): #自動改行
     c = 0
     text_list = list()
@@ -343,6 +418,8 @@ def text_count(texts): #自動改行
 
 def get_text(): #テキスト取得
     global editor_frame
+    global engine
+    engine = pyttsx3.init()
     path = str(os.path.abspath("config/") +"\\getText")
     clr.AddReference(path)
     from Gettext import Gettext1 #DLL呼び出し
@@ -362,29 +439,46 @@ def get_text(): #テキスト取得
             new_msaa = str(gettext1.GetElementFromCursorByMSAA(old_pos[0],old_pos[1])) #Microsoft Active Accessibilityを利用してテキストを入手
 
             #UIAUTOMATIONの利用が推奨されているので優先度が高い
-            if new_ui != "" and new_ui != None and new_ui != "None" and new_ui != old_ui: #空白チェック
+            if new_ui != "" and new_ui != None and new_ui != "None" and new_ui != old_ui and new_ui != "stcwindow": #空白チェック
                 old_ui = new_ui
                 editor_frame.eyes_text.SetLabel(text_count(old_ui)) #描写
+                speak(old_ui)
                 count = 0
 
-            elif new_msaa != "" and new_msaa != None and new_msaa != "None" and new_msaa != old_msaa: #空白チェック
+            elif new_msaa != "" and new_msaa != None and new_msaa != "None" and new_msaa != old_msaa and new_msaa != "stcwindow": #空白チェック
                 old_msaa = new_msaa
                 editor_frame.eyes_text.SetLabel(text_count(old_msaa)) #描写
+                speak(old_msaa)
                 count = 0
 
         new_cursor_text = editor_frame.cursor_text() #エディタの文を取得
         if new_cursor_text != old_cursor_text:
             old_cursor_text = new_cursor_text
             editor_frame.eyes_text.SetLabel(text_count(old_cursor_text)) #描写
+            speak(old_cursor_text)
             count = 0
 
         count += 1
-        if count >= 30: #3秒経ったらリセット
+        if count >= 60: #3秒経ったらリセット
             old_ui = ""
             old_msaa = ""
-            old_cursor_text = ""
             count = 0
+
+
         sleep(0.1)
+
+def speak(text):
+    global engine
+    try:
+        replace_list = [["'","シングルクォーテーション"],['"',"ダブルクォーテーション"],[".","ドット"],["=","イコール"],[",","カンマ"],[";","セミコロン"],[":","コロン"]]
+        text = str(text)
+        for n in range(len(replace_list)):
+            text = str(text).replace(replace_list[n][0],replace_list[n][1])
+        engine.save_to_file(text, "sound/output.mp3")
+        engine.runAndWait()
+        winsound.PlaySound("sound/output.mp3",winsound.SND_ASYNC)
+    except:
+        pass
 
 if __name__ == "__main__":
     app = wx.App(False)
